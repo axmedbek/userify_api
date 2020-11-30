@@ -1,0 +1,20 @@
+{
+  "name": "axmedbek/userify_api",
+  "description": "Userify represent API to manage company users",
+  "type": "project",
+  "authors": [
+    {
+      "name": "Ahmad Mammadli",
+      "email": "ehmedmemmedli77@gmail.com"
+    }
+  ],
+  "require": {},
+  "scripts": {
+    "usefon": "php -S localhost:1111 -t public"
+  },
+  "autoload": {
+    "psr-4": {
+      "Src\\": "src/"
+    }
+  }
+}
