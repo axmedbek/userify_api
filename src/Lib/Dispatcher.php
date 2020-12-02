@@ -2,74 +2,99 @@
 
 namespace Src\Lib;
 
-use Src\Lib\Request\IRequest;
-
 class Dispatcher
 {
-    private $request;
-    private $supportedHttpMethods = array(
-        "GET",
-        "POST"
-    );
+    /**
+     * The request we're working with.
+     *
+     * @var string
+     */
+    private $current_route;
+    private $current_method;
 
-    function __construct(IRequest $request)
+    public const POST_METHOD = 'POST';
+    public const GET_METHOD = 'GET';
+    public const PUT_METHOD = 'PUT';
+    public const DELETE_METHOD = 'DELETE';
+
+    /**
+     * The $routes array will contain our URI's and callbacks.
+     * @var array
+     */
+    private $routes = [];
+
+    /**
+     * For this example, the constructor will be responsible
+     * for parsing the request.
+     *
+     * @param $server
+     */
+    public function __construct($server)
     {
-        $this->request = $request;
+        $this->current_route = $server['REQUEST_URI'];
+        $this->current_method = $server['REQUEST_METHOD'];
     }
 
-    function __call($name, $args)
+
+    public function get(string $uri, $fn): void
     {
-        list($route, $method) = $args;
-
-        if(!in_array(strtoupper($name), $this->supportedHttpMethods))
-        {
-            $this->invalidMethodHandler();
-        }
-
-        $this->{strtolower($name)}[$this->formatRoute($route)] = $method;
+        $this->routes[$uri . "|" . self::GET_METHOD] = $fn;
     }
 
-
-    private function formatRoute($route)
+    public function post(string $uri, $fn): void
     {
-        $result = rtrim($route, '/');
-        if ($result === '')
-        {
-            return '/';
-        }
-        return $result;
+        $this->routes[$uri . "|" . self::POST_METHOD] = $fn;
     }
 
-    private function invalidMethodHandler()
+    public function put(string $uri, $fn): void
     {
-        header("{$this->request->serverProtocol} 405 Method Not Allowed");
+        $this->routes[$uri . "|" . self::PUT_METHOD] = $fn;
     }
 
-    private function defaultRequestHandler()
+    public function delete(string $uri, $fn): void
     {
-        header("{$this->request->serverProtocol} 404 Not Found");
+        $this->routes[$uri . "|" . self::DELETE_METHOD] = $fn;
     }
 
     /**
-     * Resolves a route
+     * Determine is the requested route exists in our
+     * routes array.
+     *
+     * @param string|null $uri
+     * @return boolean
      */
-    function resolve()
+    protected function hasRoute(string $uri = null): bool
     {
-        $methodDictionary = $this->{strtolower($this->request->requestMethod)};
-        $formattedRoute = $this->formatRoute($this->request->requestUri);
-        $method = $methodDictionary[$formattedRoute];
-
-        if(is_null($method))
-        {
-            $this->defaultRequestHandler();
-            return;
-        }
-
-        echo call_user_func_array($method, array($this->request));
+        if (is_null($uri)) return false;
+        return array_key_exists($uri, $this->routes);
     }
 
-    function __destruct()
+
+    public function run(): void
     {
-        $this->resolve();
+        $params = @$this->routes[$this->current_route . "|" . $this->current_method];
+
+        if (is_null($params)) {
+            $this->handleNotFound();
+            exit();
+        }
+
+        $controller = $params['controller'];
+        $controller = str_replace("Src", "src", $controller);
+        $controller = str_replace("\\", "/", $controller);
+
+        require __DIR__ . '/../../' . $controller . '.php';
+
+        if ($this->hasRoute($this->current_route . "|" . $this->current_method)) {
+            $classInstance = new $params['controller'];
+            echo $classInstance->{$params['method']}(1);
+        } else {
+            $this->handleNotFound();
+        }
+    }
+
+    private function handleNotFound(): void
+    {
+        header("HTTP/1.0 404 not found");
     }
 }

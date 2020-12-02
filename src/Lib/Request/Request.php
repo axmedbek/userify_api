@@ -3,8 +3,12 @@
 namespace Src\Lib\Request;
 
 
+use Src\Lib\Dispatcher;
+
 class Request implements IRequest
 {
+    private $requestMethod;
+
     function __construct()
     {
         $this->bootstrapSelf();
@@ -35,15 +39,8 @@ class Request implements IRequest
 
     public function getBody()
     {
-        if($this->requestMethod === "GET")
+        if ($this->requestMethod == Dispatcher::POST_METHOD)
         {
-            return;
-        }
-
-
-        if ($this->requestMethod == "POST")
-        {
-
             $body = array();
             foreach($_POST as $key => $value)
             {
@@ -52,5 +49,7 @@ class Request implements IRequest
 
             return $body;
         }
+
+        return null;
     }
 }
